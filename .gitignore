@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.env
+
+# Credentials
+*.key
+*.pem
+secrets/
+
+# Local caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Editor and OS files
+.vscode/
+.DS_Store
+
+# Logs
+*.log

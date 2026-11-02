@@ -1,0 +1,70 @@
+
+flowchart TB
+    User["Business User"]
+
+    subgraph Platform["Enterprise AI Platform — C4 Level 2"]
+        direction TB
+
+        UI["Web Interface / API<br/>Open WebUI / FastAPI"]
+
+        Agent["Agent Application<br/>Business Operations Assistant"]
+
+        Orch["Agent Orchestration<br/>LangGraph"]
+
+        Gateway["Model Gateway<br/>LiteLLM"]
+
+        RAG["Knowledge Retrieval Service<br/>RAG / Embeddings"]
+
+        Integration["Enterprise Integration Service<br/>FastAPI / MCP"]
+
+        Policy["Policy Enforcement Service<br/>OPA / Authorization"]
+
+        Obs["Observability Service<br/>OpenTelemetry"]
+
+        State[("Agent State & Knowledge<br/>PostgreSQL / pgvector")]
+
+        UI --> Agent
+        Agent --> Orch
+
+        Orch --> Gateway
+        Orch --> RAG
+        Orch --> Integration
+
+        RAG <--> State
+        Orch <--> State
+
+        Orch -->|"Authorize tool action"| Policy
+        Integration -->|"Verify permission"| Policy
+
+        UI -.-> Obs
+        Agent -.-> Obs
+        Orch -.-> Obs
+        Gateway -.-> Obs
+        Integration -.-> Obs
+    end
+
+    LLM["Model Inference<br/>Ollama / Local LLM"]
+    ERP["Enterprise Systems<br/>Synthetic ERP / CRM API"]
+    Docs["Enterprise Documents<br/>Policies / Reference Data"]
+    IAM["Identity Provider<br/>Keycloak"]
+
+    User --> UI
+
+    Gateway <--> LLM
+    Integration <--> ERP
+    Docs --> RAG
+    Policy <--> IAM
+
+    classDef interface fill:#dbeafe,stroke:#2563eb,color:#172554
+    classDef agent fill:#e0f2fe,stroke:#0284c7,color:#075985
+    classDef orchestration fill:#ede9fe,stroke:#7c3aed,color:#4c1d95
+    classDef data fill:#dcfce7,stroke:#16a34a,color:#14532d
+    classDef governance fill:#ffedd5,stroke:#ea580c,color:#7c2d12
+    classDef external fill:#f1f5f9,stroke:#64748b,color:#1e293b
+
+    class UI interface
+    class Agent agent
+    class Orch,Gateway orchestration
+    class RAG,Integration,State data
+    class Policy,Obs governance
+    class User,LLM,ERP,Docs,IAM external

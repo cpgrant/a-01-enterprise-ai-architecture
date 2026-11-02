@@ -1,0 +1,31 @@
+
+flowchart TB
+    User["Business User"]
+    Ops["Platform Operations Team"]
+
+    subgraph Enterprise["Enterprise AI Architecture — System Boundary"]
+        AI["Enterprise AI Platform<br/>Governed AI Agents & Business Recommendations"]
+    end
+
+    ERP["Enterprise Systems<br/>ERP / CRM / Operational APIs"]
+    KB["Knowledge Sources<br/>Documents / Policies / Reference Data"]
+    LLM["Model Inference Service<br/>Local LLM / Ollama"]
+    IAM["Identity Provider<br/>Authentication / User Identity"]
+
+    User -->|"Business requests"| AI
+    AI -->|"Recommendations and evidence"| User
+
+    Ops -->|"Administers and monitors"| AI
+
+    AI <-->|"Read operational data"| ERP
+    AI <-->|"Retrieve business knowledge"| KB
+    AI <-->|"Inference requests and responses"| LLM
+    AI <-->|"Authentication and identity"| IAM
+
+    classDef person fill:#dbeafe,stroke:#2563eb,color:#172554
+    classDef system fill:#d1fae5,stroke:#059669,color:#064e3b
+    classDef external fill:#f1f5f9,stroke:#64748b,color:#1e293b
+
+    class User,Ops person
+    class AI system
+    class ERP,KB,LLM,IAM external
