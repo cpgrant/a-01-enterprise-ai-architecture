@@ -1,0 +1,27 @@
+name: ai-a01
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: ai-a01-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ai_a01
+      POSTGRES_USER: ai_a01
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+
+    ports:
+      - "127.0.0.1:5433:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ai_a01 -d ai_a01"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
