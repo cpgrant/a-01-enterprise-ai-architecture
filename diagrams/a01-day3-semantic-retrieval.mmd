@@ -1,0 +1,31 @@
+flowchart TB
+    subgraph Ingestion["Document Embedding Pipeline"]
+        direction LR
+        Docs["Three Enterprise Policies"]
+        Model1["EmbeddingGemma 270M"]
+        Vectors["768-Dimensional Embeddings"]
+        Docs --> Model1 --> Vectors
+    end
+
+    subgraph Database["PostgreSQL 16 + pgvector"]
+        Store[("knowledge_documents<br/>vector(768)")]
+    end
+
+    subgraph Retrieval["Semantic Retrieval Pipeline"]
+        direction LR
+        Query["Natural-Language Question"]
+        Model2["EmbeddingGemma 270M"]
+        QueryVector["768-Dimensional Query Vector"]
+        Search["Cosine Similarity Search"]
+        Results["Ranked Policy Documents"]
+        Query --> Model2 --> QueryVector --> Search --> Results
+    end
+
+    Vectors -->|Store| Store
+    Store -->|Compare embeddings| Search
+
+    classDef model fill:#dbeafe,stroke:#2563eb,color:#172554
+    classDef data fill:#dcfce7,stroke:#16a34a,color:#14532d
+
+    class Model1,Model2,Search model
+    class Store,Docs,Vectors,QueryVector,Results data

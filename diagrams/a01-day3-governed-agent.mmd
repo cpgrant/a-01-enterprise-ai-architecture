@@ -1,0 +1,59 @@
+flowchart TB
+    User["Business Request<br/>User ID + Role"]
+
+    subgraph Agent["LangGraph Enterprise Agent"]
+        direction TB
+        A["1. Authorize Request"]
+        B["2. Retrieve At-Risk Orders"]
+        C["3. Retrieve Policies"]
+        D["4. Generate Recommendations"]
+        E["5. Validate Structured Output"]
+
+        A -->|Permitted| B
+        B --> C
+        C --> D
+        D --> E
+    end
+
+    subgraph Controls["Governance Controls - Python Modules"]
+        direction TB
+        RBAC["policy.py<br/>Role-Based Permissions"]
+        Schema["validation.py<br/>Pydantic Schema + ID Checks"]
+    end
+
+    subgraph Data["Enterprise Integration"]
+        direction TB
+        API["FastAPI - Read-Only Endpoints"]
+        DB[("PostgreSQL 16")]
+        API --> DB
+    end
+
+    subgraph AI["Local AI Inference"]
+        direction TB
+        LLM["LiteLLM"]
+        Qwen["Ollama - Qwen 3.8 27B"]
+        GPU["RTX 4090"]
+        LLM --> Qwen
+        Qwen --> GPU
+    end
+
+    Denied["Authorization Denied"]
+    Result["Validated JSON Recommendations"]
+
+    User --> A
+    A -.->|Check permissions| RBAC
+    A -->|Denied| Denied
+
+    B -.-> API
+    C -.-> API
+    D -.-> LLM
+    E -.-> Schema
+    E -->|Valid| Result
+
+    classDef control fill:#fff0dd,stroke:#db7b25,color:#70370b
+    classDef process fill:#dbeafe,stroke:#2563eb,color:#172554
+    classDef data fill:#dcfce7,stroke:#16a34a,color:#14532d
+
+    class RBAC,Schema,A,E,Denied control
+    class D,LLM,Qwen,GPU process
+    class B,C,API,DB data

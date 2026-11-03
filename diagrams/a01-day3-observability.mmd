@@ -1,0 +1,27 @@
+flowchart TB
+    Root["ai-a01.workflow<br/>Parent Trace"]
+
+    A["agent.authorize"]
+    B["agent.retrieve_orders"]
+    C["agent.retrieve_policies"]
+    D["agent.analyze"]
+    E["agent.validate"]
+
+    Root --> A
+    Root --> B
+    Root --> C
+    Root --> D
+    Root --> E
+
+    B --> H1["HTTP GET /orders/at-risk"]
+    C --> H2["HTTP GET /knowledge"]
+    D --> H3["HTTP POST Ollama /api/generate"]
+
+    Export["OpenTelemetry SDK<br/>Console Span Exporter"]
+    Root -.-> Export
+
+    classDef workflow fill:#dbeafe,stroke:#2563eb,color:#172554
+    classDef api fill:#dcfce7,stroke:#16a34a,color:#14532d
+
+    class Root,A,B,C,D,E workflow
+    class H1,H2,H3 api
