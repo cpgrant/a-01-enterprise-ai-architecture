@@ -1,4 +1,3 @@
-
 import json
 import os
 from typing import TypedDict
@@ -6,6 +5,10 @@ from typing import TypedDict
 import httpx
 from langgraph.graph import StateGraph, START, END
 from litellm import completion
+
+from agent.policy import Principal, authorize_action, AuthorizationError
+from agent.validation import validate_recommendation
+from observability.tracing import configure_tracing, get_tracer, traced_node
 
 
 API_URL = os.getenv("ENTERPRISE_API_URL", "http://127.0.0.1:8000")
@@ -15,6 +18,8 @@ MODEL = os.getenv("AI_MODEL", "qwen3.8:27b")
 
 class AgentState(TypedDict, total=False):
     request: str
+    user_id: str
+    role: str
     authorized: bool
     orders: list[dict]
     policies: list[dict]
@@ -22,36 +27,69 @@ class AgentState(TypedDict, total=False):
     validated: bool
 
 
+def get_principal(state: AgentState) -> Principal:
+    """Construct the principal from supplied workflow identity fields."""
+    return Principal(
+        user_id=state.get("user_id", ""),
+        role=state.get("role", ""),
+    )
+
+@traced_node("authorize")
 def authorize(state: AgentState):
-    # Prototype-only authorization.
-    # Replace with authenticated identity and policy enforcement.
-    permitted = bool(state["request"].strip())
-    if not permitted:
-        raise PermissionError("Request not authorized")
-    return {"authorized": permitted}
+    """Check request validity and required read permissions."""
 
+    request = state.get("request", "")
 
+    if not request.strip():
+        raise AuthorizationError("Empty business request")
+
+    principal = get_principal(state)
+
+    authorize_action(principal, "orders:read")
+    authorize_action(principal, "policies:read")
+
+    return {"authorized": True}
+
+@traced_node("retrieve_orders")
 def retrieve_orders(state: AgentState):
+    """Retrieve delayed orders only when access is permitted."""
+
     if not state.get("authorized"):
         raise PermissionError("Enterprise data access denied")
+
+    principal = get_principal(state)
+    authorize_action(principal, "orders:read")
 
     with httpx.Client(timeout=30) as client:
         response = client.get(f"{API_URL}/orders/at-risk")
         response.raise_for_status()
+
         return {"orders": response.json()}
 
-
+@traced_node("retrieve_policies")
 def retrieve_policies(state: AgentState):
+    """Retrieve enterprise policies only when access is permitted."""
+
     if not state.get("authorized"):
         raise PermissionError("Knowledge access denied")
+
+    principal = get_principal(state)
+    authorize_action(principal, "policies:read")
 
     with httpx.Client(timeout=30) as client:
         response = client.get(f"{API_URL}/knowledge")
         response.raise_for_status()
+
         return {"policies": response.json()}
 
 
+@traced_node("analyze")
 def analyze(state: AgentState):
+    """Generate structured recommendations from enterprise evidence."""
+
+    if not state.get("authorized"):
+        raise PermissionError("Agent analysis denied")
+
     evidence = {
         "orders": state["orders"],
         "policies": state["policies"],
@@ -65,11 +103,24 @@ def analyze(state: AgentState):
                 "role": "system",
                 "content": (
                     "You are an enterprise operations analyst. "
-                    "Use only supplied evidence. "
-                    "Identify delayed orders, prioritize critical customers, "
-                    "and recommend corrective actions. "
-                    "Cite order IDs and relevant policy titles. "
-                    "Do not claim to have executed any business action."
+                    "Use only the supplied orders and policies. "
+                    "Recommend corrective actions for delayed orders. "
+                    "Prioritize critical customers. "
+                    "Return ONLY valid JSON with this structure: "
+                    '{"recommendations": ['
+                    '{"order_id": 1001, '
+                    '"action": "Escalate supplier delay", '
+                    '"reason": "Critical customer with a five-day delay", '
+                    '"policy_ids": [1]}'
+                    "]}. "
+                    "The example values are illustrative; use only IDs "
+                    "and facts present in the supplied evidence. "
+                    "Each recommendation must have a unique order_id. "
+                    "Cite actual policy document_id values. "
+                    "Do not invent order IDs, policy IDs, currencies, "
+                    "monetary amounts or business outcomes. "
+                    "Do not include markdown formatting or commentary. "
+                    "Do not claim to have executed any action."
                 ),
             },
             {
@@ -82,17 +133,32 @@ def analyze(state: AgentState):
         ],
     )
 
-    return {"recommendation": response.choices[0].message.content or ""}
+    return {
+        "recommendation": response.choices[0].message.content or ""
+    }
 
 
+@traced_node("validate")
 def validate(state: AgentState):
-    recommendation = state.get("recommendation", "")
-    is_valid = bool(recommendation.strip())
+    """Validate model JSON and its references to enterprise records."""
 
-    return {"validated": is_valid}
+    report = validate_recommendation(
+        output=state.get("recommendation", ""),
+        orders=state["orders"],
+        policies=state["policies"],
+    )
+
+    return {
+        "validated": True,
+        "recommendation": report.model_dump_json(indent=2),
+    }
+
+
 
 
 def build_graph():
+    """Build the enterprise operations LangGraph workflow."""
+
     graph = StateGraph(AgentState)
 
     graph.add_node("authorize", authorize)
@@ -112,15 +178,34 @@ def build_graph():
 
 
 if __name__ == "__main__":
+    configure_tracing()
+    tracer = get_tracer()
+
     workflow = build_graph()
 
-    result = workflow.invoke({
-        "request": (
-            "Review customer orders at risk of delay and recommend "
-            "corrective actions based on enterprise policies."
-        )
-    })
+    with tracer.start_as_current_span("ai-a01.workflow") as span:
+        span.set_attribute("workflow.name", "enterprise-operations")
+        span.set_attribute("workflow.mode", "read-only")
 
-    print("\n=== AI-A01 ENTERPRISE OPERATIONS ASSISTANT ===")
-    print(result["recommendation"])
-    print("\nValidated:", result["validated"])
+        result = workflow.invoke({
+            "user_id": "demo-analyst",
+            "role": "analyst",
+            "request": (
+                "Review customer orders at risk of delay and recommend "
+                "corrective actions based on enterprise policies."
+            ),
+        })
+
+        span.set_attribute(
+            "workflow.validated",
+            result["validated"],
+        )
+
+        print("\n=== AI-A01 ENTERPRISE OPERATIONS ASSISTANT ===")
+        print("\nUser:", result["user_id"])
+        print("Role:", result["role"])
+        print("Authorized:", result["authorized"])
+
+        print("\n=== RECOMMENDATION ===")
+        print(result["recommendation"])
+        print("\nValidated:", result["validated"])

@@ -6,3 +6,7 @@ httpx
 pytest
 langgraph
 litellm
+pydantic>=2,<3
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-instrumentation-httpx
