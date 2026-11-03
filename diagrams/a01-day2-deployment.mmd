@@ -1,0 +1,25 @@
+flowchart TB
+    User["Developer / API Client"]
+
+    subgraph WSL["Ubuntu / WSL2"]
+        Agent["LangGraph Agent<br/>Python Virtual Environment"]
+        Gateway["LiteLLM Client"]
+        Ollama["Ollama 0.40.13<br/>Qwen 3.8 27B"]
+
+        subgraph Docker["Docker Compose — AI-A01"]
+            API["FastAPI Container<br/>Host Port 8001"]
+            DB[("PostgreSQL 16<br/>pgvector 0.8.7")]
+            Volume[("Persistent Docker Volume")]
+
+            API --> DB
+            DB --> Volume
+        end
+
+        Agent --> API
+        Agent --> Gateway
+        Gateway --> Ollama
+    end
+
+    Ollama --> GPU["NVIDIA RTX 4090<br/>24 GB VRAM"]
+    User --> Agent
+    User --> API

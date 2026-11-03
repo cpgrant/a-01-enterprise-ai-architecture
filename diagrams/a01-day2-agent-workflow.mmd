@@ -1,0 +1,22 @@
+flowchart TB
+    Start(["Business Request"])
+    Auth["1. Authorize<br/>Prototype Request Check"]
+    Orders["2. Retrieve Orders<br/>FastAPI /orders/at-risk"]
+    Knowledge["3. Retrieve Policies<br/>FastAPI /knowledge"]
+    Analysis["4. Analyze<br/>LiteLLM → Qwen 3.8"]
+    Validation["5. Validate<br/>Nonempty Response Check"]
+    Result(["Evidence-Based Recommendation"])
+
+    Start --> Auth
+    Auth --> Orders
+    Orders --> Knowledge
+    Knowledge --> Analysis
+    Analysis --> Validation
+    Validation --> Result
+
+    DB[("PostgreSQL + pgvector")]
+    LLM["Ollama / RTX 4090"]
+
+    DB -.-> Orders
+    DB -.-> Knowledge
+    Analysis -.-> LLM
