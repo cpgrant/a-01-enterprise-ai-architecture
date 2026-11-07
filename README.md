@@ -16,6 +16,57 @@ integration, knowledge, inference, governance, and operations.
 The architecture uses seven functional layers and two
 cross-cutting pillars.
 
+
+## Quick Start
+
+AI-A01 is a working enterprise AI prototype running locally using
+Docker, PostgreSQL, FastAPI, LangGraph, LiteLLM and Ollama.
+
+### Start
+
+Ensure Docker Desktop is running.
+
+```bash
+cd ~/development/ai-projects/a-01-enterprise-ai-architecture
+source .venv/bin/activate
+sudo systemctl start ollama
+docker compose -f infra/compose.yaml up -d
+```
+
+### Verify
+
+```bash
+curl http://127.0.0.1:8001/health
+```
+
+### Run the agent
+
+```bash
+ENTERPRISE_API_URL=http://127.0.0.1:8001 \
+PYTHONPATH=src python -m agent.workflow
+```
+
+### Explore the API
+
+Open http://127.0.0.1:8001/docs
+
+### Run tests
+
+```bash
+PYTHONPATH=src python -m pytest tests/ -v
+```
+
+### Shut down
+
+```bash
+docker compose -f infra/compose.yaml down
+sudo systemctl stop ollama
+```
+
+For detailed instructions, see the
+[AI-A01 Operations Runbook](docs/AI-A01-Operations-Runbook.md).
+
+
 ## 2. Architecture Layer Model
 
 ![Enterprise AI Architecture](diagrams/a01-layer-model.png)
