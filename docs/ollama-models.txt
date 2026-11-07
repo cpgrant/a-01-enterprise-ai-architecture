@@ -1,0 +1,6 @@
+NAME                     ID              SIZE      MODIFIED     
+embeddinggemma-2:270m    c21dd30c1e38    303 MB    4 days ago      
+qwen3.8:27b              aaee06c39dcf    17 GB     4 days ago      
+granite4.2:8b            f586c02fdecd    5.3 GB    4 days ago      
+nemotron-3.5-bolt:e4b    69f2be39b309    7.9 GB    4 days ago      
+gemma4:31b               6316f0629137    19 GB     6 months ago    
